@@ -1,0 +1,30 @@
+Nome da Coluna,Descrição Oficial
+cod_un_negocio,Chave da Unidade de Negócio (ex: Marca).
+cod_pedido,Identificador único da transação de venda.
+cod_material,Código SKU do produto vendido.
+cod_material_pai,Chave de agrupamento para kits e variantes de produto.
+apresentacao_combo,Classificador de venda (INDIVIDUAL ou COMBO).
+dt_venda,Data de fechamento do pedido (YYYY-MM-DD).
+dt_hora_venda,Timestamp exato da captura da transação no sistema de origem.
+cod_ciclo,Código do ciclo comercial vigente no momento da venda.
+des_ciclo,Descrição textual do ciclo de marketing.
+marca_ind,Marca proprietária associada ao material.
+categoria_final_nivel1,Primeiro nível da árvore de categorias de produto.
+uf,Unidade Federativa de destino do pedido.
+regiao,Região geográfica para fins de logística.
+des_cidade,Nome do município de entrega.
+vlr_receita_bruta_omni,Valor total bruto antes de impostos e devoluções.
+vlr_receita_faturada,Receita líquida após a emissão da nota fiscal.
+vlr_venda_pago,Valor efetivamente transacionado no meio de pagamento.
+vlr_venda_desconto,Montante total de abatimentos aplicados ao item.
+status_oms,Status atualizado do pedido no Order Management System.
+flg_faturada,Indicador binário (1/0) de conclusão do faturamento fiscal.
+flg_aprovada,Indicador binário (1/0) de autorização financeira.
+des_canal_venda_final,Canal de venda atribuído pela regra de última interação.
+fonte_de_trafego_nivel_1,Agrupador primário de origem de tráfego (UTM Source).
+des_midia_canal,Canal específico de mídia digital (UTM Medium).
+des_cupom,Voucher ou cupom promocional aplicado à transação.
+flg_pedidos_cd,Flag de atendimento via Centro de Distribuição (1/0).
+flg_pedidos_pickup,Flag de retirada em loja física - Click & Collect (1/0).
+cpf_hash,Identificador anonimizado do cliente para análises de CRM.
+cpf_consumidor_full,CPF do consumidor final para fins exclusivos de auditoria.
