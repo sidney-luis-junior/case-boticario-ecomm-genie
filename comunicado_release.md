@@ -17,8 +17,10 @@ A IA não tem "bom senso", então nós colocamos as travas. O E-comm Genie **nã
 **🔮 Olhando para o futuro**
 Nós não apenas mapeamos as perguntas de hoje, mas já deixamos o Genie preparado para amanhã. O robô já sabe identificar a nossa malha de **O2O (Retirada em Loja vs CD)**, calcular a porcentagem de desconto para proteger nossa margem, e mapear em qual hora do dia vendemos mais.
 
-**⚠️ Ponto de Atenção (Mídia & ROI)**
-Para o time de Trade/Performance: no momento, o Genie não consegue responder com precisão o "ROI do Instagram". Nossa base de vendas captura a receita e os cupons, mas ainda não está conectada ao custo real de mídia gasta lá na ponta (Spend). Já mapeamos isso como um débito técnico para a próxima evolução junto aos engenheiros!
+**⚠️ Pontos de Atenção (Mídia e Produtos)**
+ROI do Instagram: A base captura a receita, mas ainda precisamos conectar o custo real de mídia (Spend) das plataformas sociais.
+
+Busca por Nome de Produto: A base atual possui apenas o código do produto (SKU numérico). Para que o Genie responda perguntas como "Quanto vendeu o Malbec Desodorante Colônia", precisaremos plugar a nossa tabela de vendas com a tabela de dados mestres. Por enquanto, as buscas devem ser feitas pelo código do SKU!!
 
 Vamos juntos transformar o E-commerce do Grupo Boticário com dados confiáveis e rápidos. A documentação técnica detalhada já está disponível no repositório oficial.
 
