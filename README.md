@@ -28,6 +28,10 @@ Para além das requisições mapeadas no momento zero do produto, o modelo de me
 * **Heatmap de Vendas:** Extração da hora exata da venda (`dt_hora_venda`) para suportar análises de pico de tráfego do time de TI e Mídia.
 
 ## 6. ⚠️ Limitações Técnicas Conhecidas
-Foi solicitada a métrica de **ROI (Return on Investment) de campanhas do Instagram**. 
+1. Foi solicitada a métrica de **ROI (Return on Investment) de campanhas do Instagram**. 
 * **Limitação:** A base transacional atual não possui a ingestão dos custos de mídia paga (Ad Spend) das plataformas sociais. 
-* **Mitigação Atual:** O Genie consegue informar a *Receita Faturada* gerada por cupons do Instagram, mas o cálculo exato do ROI fica impossibilitado nesta V1. A recomendação é integrar a API do Meta Ads à malha de dados em uma sprint futura para desbloquear essa métrica.
+* **Mitigação Atual:** O Genie consegue informar a *Receita Faturada* gerada por cupons do Instagram, mas o cálculo exato do ROI fica impossibilitado nesta V1. A recomendação é integrar a API do Meta Ads à malha de dados em uma sprint futura para desbloquear essa métrica ou um JOIN com alguma tabela que ja traga essa informação.
+
+2. Uma das perguntas (a pergunta 3) refere-se a **descrição/marca do produto**.
+* **Limitação:** Ausência de descrição de Produtos (Cadastro): A requisição de negócio exige buscas por nomes textuais de produtos (ex: "SKU Malbec Desodorante Colônia"). A base transacional `tb_vendas` possui apenas os códigos identificadores (`cod_material`).
+* **Mitigação Atual:** O Genie conseguirá filtrar se o usuário digitar o código exato do SKU. Para buscas por linguagem natural ("Nome do Produto"), é mandatório o enriquecimento desta camada semântica via JOIN com a uma tabela que possua a nomeclatura da descrição em uma futura iteração.
