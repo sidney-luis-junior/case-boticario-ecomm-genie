@@ -146,13 +146,13 @@ case-boticario-ecomm-genie/
 **1. Executar a procedure** para popular a tabela semântica:
 
 ```sql
-CALL `projeto_de_faturamento.dataset.sp_build_tb_vendas_semantica`();
+CALL `projeto-de-faturamento.dataset.sp_build_tb_vendas_semantica`();
 ```
 
 **2. Verificar a tabela gerada:**
 
 ```sql
-SELECT * FROM `projeto_de_faturamento.dataset.tb_vendas_semantica`
+SELECT * FROM `projeto-de-faturamento.dataset.tb_vendas_semantica`
 WHERE flg_venda_valida = 1
 LIMIT 100;
 ```
