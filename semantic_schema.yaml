@@ -1,146 +1,341 @@
-# Arquivo de Metadados para o E-comm Genie
-# Modelo estruturado para consumo de LLMs, definindo entidades e regras de cálculo seguras.
+# =============================================================================
+# E-comm Genie: Metadata Schema — Camada Semântica
+# Projeto: case-boticario-ecomm-genie
+# Versão: 1.1.0
+# Descrição: Arquivo de metadados estruturado para consumo por LLMs.
+#            Define entidades (dimensões) e cálculos oficiais (métricas),
+#            além de regras de governança e filtros padrão obrigatórios.
+# =============================================================================
 
 model:
   name: modelo_vendas_ecomm
-  description: "Fonte única da verdade para métricas de vendas do e-commerce do Grupo Boticário."
-  target_table: fato_vendas_semantica
+  description: >
+    Fonte única da verdade para métricas de vendas do e-commerce do Grupo Boticário.
+    Consumida pelo E-comm Genie (LLM no Slack) para responder perguntas de
+    performance em linguagem natural.
+  target_table: projeto-de-faturamento.dataset.tb_vendas_semantica
 
-  # -------------------------------------------------------------------------
-  # DIMENSÕES: Campos usados para filtrar, agrupar e quebrar dados
-  # -------------------------------------------------------------------------
-  dimensions:
-    - name: data_venda
-      column: dt_venda
-      type: date
-      description: "Data em que o pedido foi realizado. Usado para comparações de tempo (ex: YoY, mês passado, ontem)."
+  # ---------------------------------------------------------------------------
+  # FILTRO PADRÃO OBRIGATÓRIO
+  # Toda consulta de receita, volume ou ticket médio DEVE incluir este filtro.
+  # Garante que pedidos cancelados ou não faturados nunca contaminem os números
+  # reportados a diretores, gerentes e analistas.
+  # ---------------------------------------------------------------------------
+  default_filter: "flg_venda_valida = 1"
 
-    - name: ciclo_venda
-      column: des_ciclo
-      type: string
-      description: "Ciclo comercial/marketing em que a venda ocorreu (ex: REGULAR, MAES, NAMORADOS)."
+# =============================================================================
+# GOVERNANÇA DE DADOS — CAMPOS OMITIDOS
+# Registro explícito do que foi excluído e por quê.
+# Qualquer analista ou engenheiro que consulte este schema deve compreender
+# o contrato de privacidade sem precisar ler o código da procedure.
+# =============================================================================
+governance:
+  omitted_fields:
+    - column: cpf_consumidor_full
+      reason: >
+        Dado pessoal sensível (CPF). Exposição ao LLM via canal público do Slack
+        viola a LGPD (Art. 46) e as políticas internas de segurança da informação.
+        Acesso restrito a sistemas de auditoria com controles de acesso dedicados.
+      alternative: cpf_hash (identificador anonimizado, disponível para análises de CRM)
 
-    - name: marca
-      column: marca_ind
-      type: string
-      description: "Marca do produto vendido (ex: MARCA-14, Boticário, Eudora)."
+  known_limitations:
+    - id: LIM-01
+      title: "Campos de produto e marca estão anonimizados"
+      description: >
+        Os campos marca_ind (ex: MARCA-9), categoria_final_nivel1 (ex: CAT-13) e
+        cod_material (ex: SKU-XXXXXXX) estão codificados na base transacional.
+        O LLM não consegue resolver nomes reais como "Eudora", "Perfumaria" ou
+        "Malbec Desodorante Colônia" sem uma tabela de-para (lookup).
+        Perguntas como Q2 (top consumidores de "Perfumaria") e Q3 (SKU pelo nome)
+        dependem dessa integração, mapeada como débito técnico para V2.
 
-    - name: categoria_produto
-      column: categoria_final_nivel1
-      type: string
-      description: "Categoria principal do produto (ex: Perfumaria, Maquiagem)."
+    - id: LIM-02
+      title: "Buscadores de IA ausentes no dataset histórico (2022)"
+      description: >
+        ChatGPT foi lançado em novembro/2022 e Perplexity estava em fase beta.
+        Nenhum aparece como fonte de tráfego na base atual. A pergunta Q5
+        (receita via buscadores de IA) não pode ser respondida com dados de 2022.
+        A métrica é tecnicamente suportada pelo schema — bastará ingerir dados
+        futuros com os UTMs corretos.
 
-    - name: sku_produto
-      column: cod_material
-      type: string
-      description: "Código SKU individual do produto."
+    - id: LIM-03
+      title: "ROI de campanhas de mídia paga indisponível"
+      description: >
+        A base transacional captura receita e cupons, mas não o Ad Spend
+        das plataformas (Meta, Google Ads). O cálculo de ROI exige integração
+        com a API do Meta Ads / Google Ads — mapeado para sprint futura.
 
-    - name: formato_venda
-      column: apresentacao_combo
-      type: string
-      description: "Classifica se o item foi vendido como 'INDIVIDUAL' ou 'COMBO/KIT'."
+    - id: LIM-04
+      title: "Valores negativos em vlr_receita_bruta_omni (estornos)"
+      description: >
+        Registros com vlr_receita_bruta_omni < 0 representam estornos ou
+        devoluções. A procedure os neutraliza em vlr_receita_bruta_omni via
+        GREATEST(..., 0) e os sinaliza com flg_estorno = 1 para análises
+        específicas de devolução.
 
-    - name: regiao_geografica
-      column: regiao
-      type: string
-      description: "Região do Brasil onde o pedido foi entregue (ex: NORDESTE, SUL)."
+# =============================================================================
+# DIMENSÕES: Campos usados para filtrar, agrupar e segmentar dados
+# =============================================================================
+dimensions:
 
-    - name: canal_de_trafego
-      column: fonte_de_trafego_nivel_1
-      type: string
-      description: "Origem primária do tráfego que gerou a venda (ex: Google Orgânico, Buscadores de IA)."
+  # --- Tempo ------------------------------------------------------------------
 
-    - name: midia_canal
-      column: des_midia_canal
-      type: string
-      description: "Canal específico de mídia que originou a venda (ex: ChatGPT, Perplexity, Facebook)."
+  - name: data_venda
+    column: dt_venda
+    type: date
+    description: >
+      Data em que o pedido foi realizado (YYYY-MM-DD).
+      Usado para comparações de tempo: YoY, MoM, ontem, mês passado, etc.
 
-    - name: nome_cupom
-      column: des_cupom
-      type: string
-      description: "Cupom de desconto aplicado na compra."
+  - name: hora_da_venda
+    type: expression
+    sql: "EXTRACT(HOUR FROM dt_hora_venda)"
+    description: >
+      Hora exata (0–23) da transação. Útil para identificar picos de tráfego
+      e apoiar o time de TI em decisões de escalabilidade de infraestrutura.
 
-    - name: venda_valida
-      column: flg_venda_valida
-      type: boolean
-      description: "Filtro obrigatório de negócio. 1 = Pedido Aprovado e Faturado. 0 = Cancelado ou não faturado."
-      
-    # GOVERNANÇA DE DADOS: Ocultando CPF por segurança
-    - name: cliente_hash
-      column: cpf_hash
-      type: string
-      description: "Hash único de identificação do cliente. O CPF real não é exposto ao LLM."
+  # --- Ciclo Comercial --------------------------------------------------------
 
-    # -------------------------------------------------------------------------
-    # ANTECIPANDO DEMANDAS DO E-COMMERCE
-    # -------------------------------------------------------------------------
-    
-    # Justificativa: A diretoria regional frequentemente pede granularidade. "Região" é muito amplo.
-    - name: estado_uf
-      column: uf
-      type: string
-      description: "Unidade Federativa (Estado) da entrega. Útil para análises tributárias ou de malha logística."
-      
-    - name: cidade
-      column: des_cidade
-      type: string
-      description: "Cidade da entrega. Permite fatiar a performance por municípios específicos."
+  - name: codigo_ciclo
+    column: cod_ciclo
+    type: integer
+    description: >
+      Código numérico do ciclo comercial (ex: 202201 = Ciclo 01 de 2022,
+      202216 = Ciclo 16 de 2022). Use este campo para filtros programáticos
+      e comparações entre ciclos. Para leitura humana, use nome_ciclo.
 
-    # Justificativa: Entender o horário de pico é essencial para o time de TI escalar servidores e Mídia alocar budget.
-    - name: hora_da_venda
-      type: expression
-      sql: "EXTRACT(HOUR FROM dt_hora_venda)"
-      description: "Hora exata (0-23) da transação. Útil para descobrir horários de pico no site."
+  - name: nome_ciclo
+    column: des_ciclo
+    type: string
+    description: >
+      Descrição textual do ciclo de marketing (ex: REGULAR, MAES, NAMORADOS,
+      NATAL). Use para exibição nos resultados. Para filtros precisos por
+      número de ciclo, prefira codigo_ciclo.
 
-    # Justificativa: O Boticário é forte no O2O (Online to Offline), então achei interessante trazer também essa dimenção para auxiliar.
-    - name: modalidade_logistica
-      type: expression
-      sql: "CASE WHEN flg_pedidos_pickup = 1 THEN 'Retirada em Loja' WHEN flg_pedidos_cd = 1 THEN 'Entrega CD' ELSE 'Outros' END"
-      description: "Indica se o pedido foi omnicanal (Retirada na Loja / Click & Collect) ou entrega tradicional."
+  # --- Produto ----------------------------------------------------------------
+  # ATENÇÃO: marca, categoria e sku estão anonimizados na base (ver LIM-01).
+  # As descrições abaixo refletem a realidade dos dados codificados.
 
+  - name: marca
+    column: marca_ind
+    type: string
+    description: >
+      Código de marca do produto (ex: MARCA-9, MARCA-14). Os nomes reais
+      das marcas (Boticário, Eudora, etc.) requerem tabela de-para — ver LIM-01.
 
-  # -------------------------------------------------------------------------
-  # MÉTRICAS: Cálculos e agregações oficiais da companhia
-  # -------------------------------------------------------------------------
-  metrics:
-    - name: receita_faturada
-      type: sum
-      sql: vlr_receita_faturada
-      description: "Total de receita líquida (faturamento real)."
+  - name: categoria_produto
+    column: categoria_final_nivel1
+    type: string
+    description: >
+      Código da categoria principal do produto (ex: CAT-13, CAT-7). Os nomes
+      reais (Perfumaria, Maquiagem, etc.) requerem tabela de-para — ver LIM-01.
 
-    - name: volume_pedidos
-      type: count_distinct
-      sql: cod_pedido
-      description: "Quantidade de pedidos únicos realizados."
+  - name: sku_produto
+    column: cod_material
+    type: string
+    description: >
+      Código SKU individual do produto (ex: SKU-XXXXXXX). Os nomes reais dos
+      produtos requerem tabela de-para — ver LIM-01.
 
-    - name: ticket_medio
-      type: expression
-      sql: "SUM(vlr_receita_faturada) / NULLIF(COUNT(DISTINCT cod_pedido), 0)"
-      description: "Ticket médio financeiro por pedido."
+  - name: formato_venda
+    column: apresentacao_combo
+    type: string
+    description: >
+      Classifica se o item foi vendido como 'INDIVIDUAL' ou 'COMBO'.
+      Já normalizado (UPPER/TRIM) — não há variações de caixa nos dados limpos.
 
-    - name: valor_desconto
-      type: sum
-      sql: vlr_venda_desconto
-      description: "Total de desconto concedido aos clientes."
+  # --- Localidade -------------------------------------------------------------
 
-    # -------------------------------------------------------------------------
-    # ANTECIPANDO DEMANDAS DO E-COMMERCE
-    # -------------------------------------------------------------------------
-    
-    # Justificativa: Saber a receita faturada é bom, mas o time Financeiro também pode querer avaliar o "bruto x líquido".
-    - name: receita_bruta
-      type: sum
-      sql: vlr_receita_bruta_omni
-      description: "Receita bruta capturada antes de impostos, rupturas ou devoluções."
+  - name: regiao_geografica
+    column: regiao
+    type: string
+    description: >
+      Região do Brasil do pedido (NORTE, NORDESTE, CENTRO OESTE, SUDESTE, SUL).
 
-    # Justificativa: O time de Promoções precisa saber quão "barato" o e-commerce está sendo vendido.
-    - name: taxa_de_desconto_percentual
-      type: expression
-      sql: "SUM(vlr_venda_desconto) / NULLIF(SUM(vlr_receita_bruta_omni), 0)"
-      description: "Mede a agressividade promocional: qual a porcentagem de desconto frente à receita bruta."
+  - name: estado_uf
+    column: uf
+    type: string
+    description: >
+      Unidade Federativa de entrega (ex: SP, RJ, BA). Útil para análises
+      tributárias, logísticas ou granularidade abaixo de região.
 
-    # Justificativa: Operações e Fraude monitoram isso diariamente.
-    - name: pedidos_cancelados
-      type: expression
-      sql: "COUNT(DISTINCT CASE WHEN status_oms LIKE '%Cancelado%' THEN cod_pedido END)"
-      description: "Volume de pedidos que sofreram cancelamento no sistema de origem (OMS)."
+  - name: cidade
+    column: des_cidade
+    type: string
+    description: >
+      Município de entrega. Permite fatiamento por praça específica.
+
+  # --- Canal e Tráfego --------------------------------------------------------
+
+  - name: canal_de_venda
+    column: des_canal_venda_final
+    type: string
+    description: >
+      Canal de venda final (ex: App, Site, Mktp In). Atribuído pela regra
+      de última interação do sistema.
+
+  - name: canal_de_trafego
+    column: fonte_de_trafego_nivel_1
+    type: string
+    description: >
+      Agrupador primário de origem de tráfego (ex: 1. Pagos, 2. Não Pagos,
+      3. CRM, 4. Brand Awareness, 5. Outros).
+
+  - name: midia_canal
+    column: des_midia_canal
+    type: string
+    description: >
+      Canal específico de mídia digital — já normalizado para minúsculas
+      (ex: google, facebook, salesforce, (direct), google-play, rakuten).
+      Nota: buscadores de IA (ChatGPT, Perplexity) não aparecem no dataset
+      de 2022 — ver LIM-02.
+
+  - name: nome_cupom
+    column: des_cupom
+    type: string
+    description: >
+      Código do cupom de desconto aplicado (ex: CUPOM-313, CUPOM-167).
+      Útil para análises de campanhas promocionais e cálculo de receita
+      atribuída a cupons específicos.
+
+  # --- Status e Qualidade -----------------------------------------------------
+
+  - name: venda_valida
+    column: flg_venda_valida
+    type: boolean
+    description: >
+      Filtro mestre de qualidade. 1 = pedido aprovado E faturado (válido para
+      métricas de receita). 0 = cancelado ou não faturado.
+      OBRIGATÓRIO em todas as queries de receita — já aplicado via default_filter.
+
+  - name: estorno
+    column: flg_estorno
+    type: boolean
+    description: >
+      1 = registro com vlr_receita_bruta_omni negativo (estorno ou devolução).
+      Use para análises específicas de reversão sem contaminar métricas principais.
+
+  # --- Logística (O2O) --------------------------------------------------------
+
+  - name: modalidade_logistica
+    type: expression
+    sql: >
+      CASE
+        WHEN flg_pedidos_pickup = 1 THEN 'Retirada em Loja'
+        WHEN flg_pedidos_cd = 1     THEN 'Entrega CD'
+        ELSE 'Outros'
+      END
+    description: >
+      Modalidade de fulfillment do pedido. Suporta análises de O2O
+      (Online-to-Offline): Retirada em Loja (Click & Collect) vs Entrega CD.
+
+  # --- CRM (anonimizado) ------------------------------------------------------
+
+  - name: cliente_hash
+    column: cpf_hash
+    type: string
+    description: >
+      Identificador anonimizado do cliente (hash MD5 do CPF). Único campo de
+      CRM exposto ao LLM. Usar para ranking de top consumidores e análises de
+      recorrência. O CPF real (cpf_consumidor_full) está excluído — ver governance.
+
+# =============================================================================
+# MÉTRICAS: Cálculos e agregações oficiais da companhia
+# Todas aplicam o default_filter (flg_venda_valida = 1) por padrão.
+# =============================================================================
+metrics:
+
+  # --- Receita ----------------------------------------------------------------
+
+  - name: receita_faturada
+    type: sum
+    sql: vlr_receita_faturada
+    description: >
+      Total de receita líquida após emissão de nota fiscal. Métrica principal
+      de faturamento — use como referência para KPIs de receita.
+    applies_default_filter: true
+
+  - name: receita_bruta
+    type: sum
+    sql: vlr_receita_bruta_omni
+    description: >
+      Receita bruta capturada antes de impostos e devoluções. Valores negativos
+      (estornos) já foram neutralizados na procedure — ver flg_estorno para
+      análises de devolução isoladas.
+    applies_default_filter: true
+
+  - name: valor_pago
+    type: sum
+    sql: vlr_venda_pago
+    description: >
+      Valor efetivamente transacionado no meio de pagamento. Pode diferir de
+      vlr_receita_faturada em casos de pagamento parcial ou crédito futuro.
+    applies_default_filter: true
+
+  - name: valor_desconto
+    type: sum
+    sql: vlr_venda_desconto
+    description: >
+      Total de desconto concedido aos clientes no período.
+    applies_default_filter: true
+
+  # --- Volume -----------------------------------------------------------------
+
+  - name: volume_pedidos
+    type: count_distinct
+    sql: cod_pedido
+    description: >
+      Quantidade de pedidos únicos realizados no período.
+      Para contagem de itens (SKUs) por pedido, use volume_itens.
+    applies_default_filter: true
+
+  - name: volume_itens
+    type: count
+    sql: cod_material
+    description: >
+      Quantidade de linhas de item (SKU) vendidas. Um pedido com 3 produtos
+      distintos conta como 3 itens.
+    applies_default_filter: true
+
+  # --- Ticket -----------------------------------------------------------------
+
+  - name: ticket_medio
+    type: expression
+    sql: >
+      SUM(vlr_receita_faturada) / NULLIF(COUNT(DISTINCT cod_pedido), 0)
+    description: >
+      Receita faturada média por pedido. NULLIF protege contra divisão por zero
+      quando o resultado filtrado não contém pedidos.
+    applies_default_filter: true
+
+  # --- Promoção e Margem ------------------------------------------------------
+
+  - name: taxa_de_desconto_percentual
+    type: expression
+    sql: >
+      SUM(vlr_venda_desconto) / NULLIF(SUM(vlr_receita_faturada), 0)
+    description: >
+      Percentual de desconto sobre a receita faturada. Mede a agressividade
+      promocional. Denominador: vlr_receita_faturada (mais estável que
+      vlr_receita_bruta_omni, que pode conter zeros em pedidos específicos).
+    applies_default_filter: true
+
+  # --- Cancelamento -----------------------------------------------------------
+
+  - name: pedidos_cancelados
+    type: expression
+    sql: "COUNT(DISTINCT CASE WHEN status_oms LIKE '%Cancelado%' THEN cod_pedido END)"
+    description: >
+      Volume de pedidos que sofreram cancelamento no OMS.
+      Não aplica o default_filter pois o cancelamento é, por definição,
+      um pedido inválido — monitorado separadamente por Operações e Antifraude.
+    applies_default_filter: false
+
+  - name: taxa_cancelamento
+    type: expression
+    sql: >
+      COUNT(DISTINCT CASE WHEN status_oms LIKE '%Cancelado%' THEN cod_pedido END)
+      / NULLIF(COUNT(DISTINCT cod_pedido), 0)
+    description: >
+      Percentual de pedidos cancelados sobre o total de pedidos do período.
+    applies_default_filter: false
